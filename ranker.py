@@ -304,23 +304,18 @@ def order_quality(teams_arr):
 def order_teams(team_order):
 	misses = 0
 	num_teams = len(team_order)
-	num_misses_to_continue = num_teams ** 2/2 # The number of possible combinations
+	num_misses_to_continue = (num_teams/2) * (num_teams + 1) # == 1+...+num_teams
 	k = 0
 	initial_quality = order_quality(team_order)
 	switch_cache = Set()
 	while (k < max_iterations) and (misses < num_misses_to_continue):
 		condition = True
-		tries = 0
 		while condition:
 			i = random.randint(0,num_teams-1)
 			j = random.randint(0,num_teams-1)
 			condition = (i,j) in switch_cache
-			tries += 1
 		switch_cache.add((i,j))
 		switch_cache.add((j,i))
-		print str(k)+"\t"+str(misses)+"\t"+str(tries)+"\t"+str(num_misses_to_continue)+\
-			"\t1. "+team_order[0]+"\t2. "+team_order[1]+"\t3. "+team_order[2]+\
-			"\t4. "+team_order[3]+"\t5. "+team_order[4]
 		team_order[i],team_order[j] = team_order[j],team_order[i]
 		new_quality = order_quality(team_order)
 		if (new_quality >= initial_quality):
@@ -330,9 +325,12 @@ def order_teams(team_order):
 		else:
 			# Only overwrite if we changed something
 			initial_quality = new_quality
-			misses = 0
+			misses = 1 # We won't be retrying the previous ordering, so count that as a miss
 			k+=1
 			switch_cache.clear()
+			# Don't retry the ordering we just did
+			switch_cache.add((i,j))
+			switch_cache.add((j,i))
 	print "Ordered teams:\n\tMisses: %d\n\tIterations: %d\n\tQuality: %d"%(misses,k,initial_quality)
 	return team_order
 
