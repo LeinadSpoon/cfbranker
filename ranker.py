@@ -3,7 +3,6 @@
 # College football computer ranker
 
 # TODO: Faster
-# TODO: Reverse order of WABW and WWABW
 
 # Layout of teams data structure:
 # Top level is hash table where the keys are team names, and the values are arrays
