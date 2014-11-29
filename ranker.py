@@ -227,9 +227,7 @@ def weighted_average_best_wins(team):
 					else:
 						# If the opponent isn't in the prev_year_recs hash table, they didn't play any games last year
 						weighted_average_best_wins.team_wins[game[1]] = weighted_average_best_wins.team_wins[game[1]] * (1.0 - mod_weight)
-				opp_wins.append(w)
-			else:
-				opp_wins.append(weighted_average_best_wins.team_wins[game[1]])
+			opp_wins.append(weighted_average_best_wins.team_wins[game[1]])
 
 	opp_wins.sort(reverse=True)
 	if len(opp_wins) >= 3:
