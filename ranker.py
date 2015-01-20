@@ -5,20 +5,20 @@
 # TODO: Faster
 
 # Layout of teams data structure:
-# Top level is hash table where the keys are team names, and the values are arrays
+# Top level is hash table where the keys are team names, and the values are
+# arrays
 # Each array is made up of arrays, each of which is an individual "game"
 # The layout of "game" arrays is:
-# [result (W/L), opponent, team score, opponent score, location (H/A)] 
+# [result (W/L), opponent, team score, opponent score, location (H/A)]
 
 import sys
 import csv
 import random
 import math
-from sets import Set
 
 
 prev_year_data_file = "cfb2013lines.csv"
-current_week = 5 # No difference for weeks after week 5
+current_week = 5  # No difference for weeks after week 5
 
 infile = "cfb2014lines.csv"
 tnv_col = 1
@@ -27,44 +27,64 @@ tsv_col = 2
 tsh_col = 4
 max_mov = 21
 max_iterations = 300000
-#num_misses_to_continue = 34000 #17000 # 85000 # Replaced with new, (hopefully) faster ordering logic
 mov_weight = 0.25
 wins_weight = 0.75
 
+# Comparison weightings
+hth_cmp_weight = 30
+co_base_cmp_weight = 10
+co_tiebreaker_cmp_weight = 9.5
+ffw_cmp_weight = 9
+aamco_21_cmp_weight = 7
+aamco_14_cmp_weight = 6
+aamco_7_cmp_weight = 5
+wwabw_cmp_weight = 4
+wabw_cmp_weight = 3
+or_cmp_weight = 2
+or_tiebreaker_cmp_weight = 1.5
+aamov_cmp_weight = 1
+mw_cmp_weight = 0.5
+tie_cmp_weight = 0
+
+
 def human_readable_cmps(weight):
-	if weight == 30:
+	if weight == hth_cmp_weight:
 		return "Head to head"
-	elif weight >= 10:
+	elif weight >= co_base_cmp_weight:
 		return "Common Opponents record"
-	elif weight == 9.5:
+	elif weight == co_tiebreaker_cmp_weight:
 		return "Common Opponents h/a tiebreaker"
-	elif weight == 9:
+	elif weight == ffw_cmp_weight:
 		return "Four fewer wins"
-	elif weight == 7:
+	elif weight == aamco_21_cmp_weight:
 		return "AAMCO >= 21"
-	elif weight == 6:
+	elif weight == aamco_14_cmp_weight:
 		return "AAMCO >= 14"
-	elif weight == 5:
+	elif weight == aamco_7_cmp_weight:
 		return "AAMCO >= 7"
-	elif weight == 4:
+	elif weight == wwabw_cmp_weight:
 		return "WWABW"
-	elif weight == 3:
+	elif weight == wabw_cmp_weight:
 		return "WABW"
-	elif weight == 2:
+	elif weight == or_cmp_weight:
 		return "Overall record"
-	elif weight == 1.5:
+	elif weight == or_tiebreaker_cmp_weight:
 		return "Overall record h/a tiebreaker"
-	elif weight == 1:
+	elif weight == aamov_cmp_weight:
 		return "AAMOV"
-	elif weight == 0:
+	elif weight == mw_cmp_weight:
+		return "More wins"
+	elif weight == tie_cmp_weight:
 		return "tie"
 	else:
 		return "ERROR: Bad input"
 
-# compares two teams, and returns True if t1 is better and False if t2 is better
-# The second element of the tuple returned is a weight of how important the distinction is
-def cmp_teams(t1,t2):
-	# Head to head
+
+# Compares two teams, and returns True if t1 is better and False if t2 is
+#  better.  The second element of the tuple returned is a weight of how
+# important the distinction is
+def cmp_teams(t1, t2):
+	# Head to head.  Assumes teams play each other no more than twice
 	t1_won = False
 	t2_won = False
 	for game in teams[t1]:
@@ -74,9 +94,9 @@ def cmp_teams(t1,t2):
 			else:
 				t2_won = True
 	if t1_won and not t2_won:
-		return (True,30)
+		return (True,hth_cmp_weight)
 	elif t2_won and not t1_won:
-		return (False,30)
+		return (False,hth_cmp_weight)
 	else:
 		pass
 
@@ -88,9 +108,9 @@ def cmp_teams(t1,t2):
 	team1_common_opp_wins,_,t1_homecount,_ = record_vs_opp_set(t1,common_opps)
 	team2_common_opp_wins,_,t2_homecount,_ = record_vs_opp_set(t2,common_opps)
 	if team1_common_opp_wins > team2_common_opp_wins:
-		return (True,10+2*len(common_opps))
+		return (True,co_base_cmp_weight+2*len(common_opps))
 	elif team2_common_opp_wins > team1_common_opp_wins:
-		return (False,10+2*len(common_opps))
+		return (False,co_base_cmp_weight+2*len(common_opps))
 	else:
 		pass # eliminating home/away tiebreak for now.  Maybe later we can insert it as a lower priority decision	
 	# Some setup for the rest
@@ -100,20 +120,20 @@ def cmp_teams(t1,t2):
 	# Short-circuit if one team has won four fewer games.  This is to get
 	# rid of FCS teams who only play an FBS team once or twice and win them all
 	if t1_wins > t2_wins + 3:
-		return (True,9)
+		return (True,ffw_cmp_weight)
 	elif t2_wins > t1_wins + 3:
-		return (False,9)
+		return (False,ffw_cmp_weight)
 
 	# AAMOV against common opponents
 	aamco1 = avg_adjusted_mov_oppset(t1, common_opps)
 	aamco2 = avg_adjusted_mov_oppset(t2, common_opps)
 
 	if abs(aamco1 - aamco2) >= 21:
-		return ((aamco1 > aamco2), 7)
+		return ((aamco1 > aamco2), aamco_21_cmp_weight)
 	elif abs(aamco1 - aamco2) >= 14:
-		return ((aamco1 > aamco2), 6)
+		return ((aamco1 > aamco2), aamco_14_cmp_weight)
 	elif abs(aamco1 - aamco2) >= 7:
-		return ((aamco1 > aamco2), 5)
+		return ((aamco1 > aamco2), aamco_7_cmp_weight)
 	# If the aamcos are within 7, it's too close, lets move on to other factors
 
 	# Best wins weighted by aamov
@@ -130,11 +150,10 @@ def cmp_teams(t1,t2):
 	wwabw2 = (wabw2 * naam2*mov_weight) + (wabw2 * wins_weight)
 
 	if wwabw1 > wwabw2:
-		return (True, 4)
+		return (True, wwabw_cmp_weight)
 	elif wwabw2 > wwabw1:
-		return (False, 4)
+		return (False, wwabw_cmp_weight)
 	else:
-		# I guess it could happen in week 1?
 		pass
 
 	# Who has the best wins?
@@ -142,9 +161,9 @@ def cmp_teams(t1,t2):
 	wabw2 = weighted_average_best_wins(t2)
 
 	if wabw1 > wabw2:
-		return (True,3)
+		return (True,wabw_cmp_weight)
 	elif wabw2 > wabw1:
-		return (False,3)
+		return (False,wabw_cmp_weight)
 	else:
 		pass
 	
@@ -152,15 +171,15 @@ def cmp_teams(t1,t2):
 	t1_percent = t1_wins/(t1_wins+t1_losses)
 	t2_percent = t2_wins/(t2_wins+t2_losses)
 	if t1_percent > t2_percent:
-		return (True,2)
+		return (True, or_cmp_weight)
 	elif t2_percent > t1_percent:
-		return (False,2)
+		return (False, or_cmp_weight)
 	else:
 		# tiebreak on home vs away
 		if t1_a > t2_a:
-			return (True,1.5)
+			return (True, or_tiebreaker_cmp_weight)
 		elif t2_a > t1_a:
-			return (False,1.5)
+			return (False, or_tiebreaker_cmp_weight)
 		else:
 			pass
 
@@ -168,22 +187,22 @@ def cmp_teams(t1,t2):
 	aam1 = avg_adjusted_mov(t1)
 	aam2 = avg_adjusted_mov(t2)
 	if aam1 > aam2:
-		return (True,1)
+		return (True, aamov_cmp_weight)
 	elif aam2 > aam1:
-		return (False,1)
+		return (False, aamov_cmp_weight)
 	else:
 		pass
 
 	# More wins are better
 	if t1_wins > t2_wins:
-		return (True,0.5)
+		return (True, mw_cmp_weight)
 	elif t2_wins > t1_wins:
-		return (False,0.5)
+		return (False, mw_cmp_weight)
 	else:
 		pass
 
 	# I give up, these teams are identical
-	return (None,0)
+	return (None, tie_cmp_weight)
 
 # For a set of opponents, what is a teams record against them
 def record_vs_opp_set(team,opps):
@@ -304,7 +323,7 @@ def order_teams(team_order):
 	num_misses_to_continue = (num_teams/2) * (num_teams + 1) # == 1+...+num_teams
 	k = 0
 	initial_quality = order_quality(team_order)
-	switch_cache = Set()
+	switch_cache = set()
 	while (k < max_iterations) and (misses < num_misses_to_continue):
 		condition = True
 		while condition:
@@ -328,7 +347,7 @@ def order_teams(team_order):
 			# Don't retry the ordering we just did
 			switch_cache.add((i,j))
 			switch_cache.add((j,i))
-	print "Ordered teams:\n\tMisses: %d\n\tIterations: %d\n\tQuality: %d"%(misses,k,initial_quality)
+	print("Ordered teams:\n\tMisses: %d\n\tIterations: %d\n\tQuality: %d" % (misses,k,initial_quality))
 	return team_order
 
 # Loads a hash table with last years team names and win counts
@@ -358,7 +377,7 @@ def load_prev_year_records():
 
 random.seed()
 
-f = open(infile, "rb")
+f = open(infile, "r")
 reader = csv.reader(f)
 
 teams = {}
@@ -415,9 +434,9 @@ for team1 in teams.keys():
 
 big_ten = ["Northwestern","Wisconsin", "Michigan", "Indiana", "Purdue", "Illinois", "Maryland", "Rutgers", "Ohio State", "Minnesota", "Nebraska", "Michigan State", "Penn State", "Iowa"] 
 
-if len(sys.argv) == 1: 
+if len(sys.argv) == 1:
 	# Print out a ranking
-	team_order = order_teams(teams.keys())
+	team_order = order_teams(list(teams.keys()))
 
 	num = 0
 	for team in team_order:
@@ -425,20 +444,25 @@ if len(sys.argv) == 1:
 		if num > 30 and team not in big_ten:
 			continue
 		wins,losses,_,_ = record_vs_opp_set(team, [game[1] for game in teams[team]])
-		print "%d. %s (%d-%d)"%(num,team, wins,losses)
+		print("%d. %s (%d-%d)"%(num,team, wins,losses))
 
 	# Print out the metrics used:
-	print "\nMetrics:"
-	for (metric, m_count) in metric_counts.iteritems():
-		print "%s: %0.2f%%"%(human_readable_cmps(metric),100*float(m_count)/float(total_cmps)) 
+	print("\nMetrics:")
+	for (metric, m_count) in metric_counts.items():
+		print("%s: %0.2f%%"%(human_readable_cmps(metric),100*float(m_count)/float(total_cmps)))
 
 elif len(sys.argv) == 2:
-	# Display info about the team
-	for game in teams[sys.argv[1]]:
-		w,l,_,_ = record_vs_opp_set(game[1],teams)
-		print "%s - %s: %d-%d"%(game[0],game[1],w,l)
-	print "AAMOV: %f"%avg_adjusted_mov(sys.argv[1])
-	print "WABW: %f"%weighted_average_best_wins(sys.argv[1])
+	if sys.argv[1] =="once":
+		for (team, games) in teams.items():
+			if (len(games) == 1):
+				print(team)
+	else:
+		# Display info about the team
+		for game in teams[sys.argv[1]]:
+			w,l,_,_ = record_vs_opp_set(game[1],teams)
+			print("%s - %s: %d-%d"%(game[0],game[1],w,l))
+		print("AAMOV: %f"%avg_adjusted_mov(sys.argv[1]))
+		print("WABW: %f"%weighted_average_best_wins(sys.argv[1]))
 
 elif len(sys.argv) == 3:
 	# Print the relative ranking between the teams and its weight (which gives you the reason)
@@ -446,14 +470,14 @@ elif len(sys.argv) == 3:
 	if sys.argv[2] == "all":
 		for team in teams.keys():
 			(val,weight) = teamcmps[(sys.argv[1],team)]
-			print "%s - %s: %s"%(team,val,human_readable_cmps(weight))
+			print("%s - %s: %s"%(team,val,human_readable_cmps(weight)))
 			
 	else:
 		(val, weight) = teamcmps[(sys.argv[1],sys.argv[2])]
-		print (val,human_readable_cmps(weight))
+		print((val,human_readable_cmps(weight)))
 else:
 	# Print the quality of the given ordering
 	for team in sys.argv[1:]:
 		if team not in teams.keys():
-			print "%s not found"%team
-	print order_quality(sys.argv[1:])
+			print("%s not found"%team)
+	print(order_quality(sys.argv[1:]))
