@@ -94,9 +94,9 @@ def cmp_teams(t1, t2):
 			else:
 				t2_won = True
 	if t1_won and not t2_won:
-		return (True,hth_cmp_weight)
+		return (True, hth_cmp_weight)
 	elif t2_won and not t1_won:
-		return (False,hth_cmp_weight)
+		return (False, hth_cmp_weight)
 	else:
 		pass
 
@@ -105,14 +105,17 @@ def cmp_teams(t1, t2):
 	team2_opps = [game[1] for game in teams[t2]]
 	common_opps = [team for team in team1_opps if team in team2_opps]
 
-	team1_common_opp_wins,_,t1_homecount,_ = record_vs_opp_set(t1,common_opps)
-	team2_common_opp_wins,_,t2_homecount,_ = record_vs_opp_set(t2,common_opps)
+	team1_common_opp_wins, _, t1_homecount, _ = record_vs_opp_set(t1, common_opps)
+	team2_common_opp_wins, _, t2_homecount, _ = record_vs_opp_set(t2, common_opps)
 	if team1_common_opp_wins > team2_common_opp_wins:
 		return (True,co_base_cmp_weight+2*len(common_opps))
 	elif team2_common_opp_wins > team1_common_opp_wins:
 		return (False,co_base_cmp_weight+2*len(common_opps))
 	else:
-		pass # eliminating home/away tiebreak for now.  Maybe later we can insert it as a lower priority decision	
+		# eliminating home/away tiebreak for now.  Maybe later it
+		# can be inserted as a lower priority decision
+		pass
+
 	# Some setup for the rest
 	(t1_wins,t1_losses,t1_h,t1_a) = record_vs_opp_set(t1,team1_opps)
 	(t2_wins,t2_losses,t2_h,t2_a) = record_vs_opp_set(t2,team2_opps)
@@ -120,9 +123,9 @@ def cmp_teams(t1, t2):
 	# Short-circuit if one team has won four fewer games.  This is to get
 	# rid of FCS teams who only play an FBS team once or twice and win them all
 	if t1_wins > t2_wins + 3:
-		return (True,ffw_cmp_weight)
+		return (True, ffw_cmp_weight)
 	elif t2_wins > t1_wins + 3:
-		return (False,ffw_cmp_weight)
+		return (False, ffw_cmp_weight)
 
 	# AAMOV against common opponents
 	aamco1 = avg_adjusted_mov_oppset(t1, common_opps)
@@ -166,7 +169,7 @@ def cmp_teams(t1, t2):
 		return (False,wabw_cmp_weight)
 	else:
 		pass
-	
+
 	# Overall record
 	t1_percent = t1_wins/(t1_wins+t1_losses)
 	t2_percent = t2_wins/(t2_wins+t2_losses)
@@ -204,6 +207,7 @@ def cmp_teams(t1, t2):
 	# I give up, these teams are identical
 	return (None, tie_cmp_weight)
 
+
 # For a set of opponents, what is a teams record against them
 def record_vs_opp_set(team,opps):
 	wins = 0.0
@@ -222,8 +226,10 @@ def record_vs_opp_set(team,opps):
 				home_count += 1
 	return (wins,losses,home_count,away_count)
 
-# Calculates the weighted average of the number of wins of the three highest win total win of 
-# a given team.  Uses the formula: (3*best_win + 2*second_best_win + third_best_win)/6
+
+# Calculates the weighted average of the number of wins of the three highest
+# win total win of a given team.  Uses the formula:
+# (3*best_win + 2*second_best_win + third_best_win)/6
 def weighted_average_best_wins(team):
 	if "team_wins" not in weighted_average_best_wins.__dict__:
 		weighted_average_best_wins.team_wins = {}
@@ -232,8 +238,9 @@ def weighted_average_best_wins(team):
 
 	if current_week < 5:
 		# Modify the wins by the win totals last year
-		mod_weight = (float(5-current_week))/4 # week 1 - 100%, week 2 - 75%, week 3 - 50%, week 4: 25%
-	
+		# week 1 - 100%, week 2 - 75%, week 3 - 50%, week 4: 25%
+		mod_weight = (float(5-current_week))/4
+
 	for game in teams[team]:
 		if game[0] == "W":
 			if not game[1] in weighted_average_best_wins.team_wins.keys():
@@ -262,6 +269,7 @@ def weighted_average_best_wins(team):
 		else:
 			return tot_wins/3
 
+
 # Calculates the average margin of victory over all games, but setting all totals above 21 to 21
 # because there really isn't much of a difference after a 3 TD lead and we don't want to reward
 # running up the score
@@ -278,6 +286,7 @@ def avg_adjusted_mov(team):
 		num_games += 1
 		total_margin += margin
 	return total_margin / num_games
+
 
 def avg_adjusted_mov_oppset(team, opps):
 	num_games = 0.0
@@ -311,16 +320,17 @@ def order_quality(teams_arr):
 			if diff:
 				quality += weight*(j-i)
 			j += 1
-		i+=1
-		j=i+1
+		i += 1
+		j = i+1
 	return quality
-		
+
+
 # Iteratively order the teams given an initial order.  Python doesn't optimize tail recursion
 # which makes me extremely unhappy
 def order_teams(team_order):
 	misses = 0
 	num_teams = len(team_order)
-	num_misses_to_continue = (num_teams/2) * (num_teams + 1) # == 1+...+num_teams
+	num_misses_to_continue = (num_teams/2) * (num_teams + 1)  # == 1+...+num_teams
 	k = 0
 	initial_quality = order_quality(team_order)
 	switch_cache = set()
@@ -342,13 +352,14 @@ def order_teams(team_order):
 			# Only overwrite if we changed something
 			initial_quality = new_quality
 			misses = 1 # We won't be retrying the previous ordering, so count that as a miss
-			k+=1
+			k += 1
 			switch_cache.clear()
 			# Don't retry the ordering we just did
 			switch_cache.add((i,j))
 			switch_cache.add((j,i))
 	print("Ordered teams:\n\tMisses: %d\n\tIterations: %d\n\tQuality: %d" % (misses,k,initial_quality))
 	return team_order
+
 
 # Loads a hash table with last years team names and win counts
 def load_prev_year_records():
@@ -359,7 +370,7 @@ def load_prev_year_records():
 	for row in reader:
 		if rownum == 0:
 			next
-		else:	
+		else:
 			if (row[tsh_col] == ' ' or row[tsh_col] == '' or row[tsv_col] == ' ' or row[tsv_col] == ''):
 				continue
 			if (int(row[tsv_col]) > int(row[tsh_col])):
@@ -394,18 +405,17 @@ for row in reader:
 		visitorscore = int(row[tsv_col])
 		homescore = int(row[tsh_col])
 
-		if (not visitorname in teams.keys()):
+		if (visitorname not in teams.keys()):
 			teams[visitorname] = []
-		if (not homename in teams.keys()):
+		if (homename not in teams.keys()):
 			teams[homename] = []
 		
-
 		teams[visitorname].append(["W" if (visitorscore > homescore) else "L"
-				       ,homename,visitorscore,homescore,"A"])
+					,homename,visitorscore,homescore,"A"])
 		teams[homename].append(["W" if (homescore > visitorscore) else "L"
-				    ,visitorname,homescore,visitorscore,"H"])
+					,visitorname,homescore,visitorscore,"H"])
 		
-	rownum += 1 
+	rownum += 1
 
 if current_week < 5:
 	# prev_year_recs is a hash table where the keys are team names and the values are the number of wins they had last year
@@ -432,7 +442,7 @@ for team1 in teams.keys():
 			metric_counts[weight] = 1
 		total_cmps += 1
 
-big_ten = ["Northwestern","Wisconsin", "Michigan", "Indiana", "Purdue", "Illinois", "Maryland", "Rutgers", "Ohio State", "Minnesota", "Nebraska", "Michigan State", "Penn State", "Iowa"] 
+big_ten = ["Northwestern","Wisconsin", "Michigan", "Indiana", "Purdue", "Illinois", "Maryland", "Rutgers", "Ohio State", "Minnesota", "Nebraska", "Michigan State", "Penn State", "Iowa"]
 
 if len(sys.argv) == 1:
 	# Print out a ranking
@@ -452,7 +462,7 @@ if len(sys.argv) == 1:
 		print("%s: %0.2f%%"%(human_readable_cmps(metric),100*float(m_count)/float(total_cmps)))
 
 elif len(sys.argv) == 2:
-	if sys.argv[1] =="once":
+	if sys.argv[1] == "once":
 		for (team, games) in teams.items():
 			if (len(games) == 1):
 				print(team)
