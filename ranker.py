@@ -31,10 +31,9 @@ mov_weight = 0.25
 wins_weight = 0.75
 
 # Comparison weightings
-hth_cmp_weight = 30
-co_base_cmp_weight = 10
-co_tiebreaker_cmp_weight = 9.5
-ffw_cmp_weight = 9
+hth_cmp_weight = 40
+co_base_cmp_weight = 20
+ffw_cmp_weight = 10
 aamco_21_cmp_weight = 7
 aamco_14_cmp_weight = 6
 aamco_7_cmp_weight = 5
@@ -52,8 +51,6 @@ def human_readable_cmps(weight):
 		return "Head to head"
 	elif weight >= co_base_cmp_weight:
 		return "Common Opponents record"
-	elif weight == co_tiebreaker_cmp_weight:
-		return "Common Opponents h/a tiebreaker"
 	elif weight == ffw_cmp_weight:
 		return "Four fewer wins"
 	elif weight == aamco_21_cmp_weight:
@@ -434,8 +431,8 @@ for team1 in teams.keys():
 		# Count up how frequently each metric is used to determine the comparison
 		weight = teamcmps[(team1,team2)][1]
 		# Collapse "Common opps" to one point
-		if (weight < 30 and weight >= 10):
-			weight = 10
+		if (weight < hth_cmp_weight and weight >= co_base_cmp_weight):
+			weight = co_base_cmp_weight
 		if weight in metric_counts:
 			metric_counts[weight] += 1
 		else:
