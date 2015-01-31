@@ -16,7 +16,6 @@ import csv
 import random
 import math
 
-
 prev_year_data_file = "cfb2013lines.csv"
 current_week = 5  # No difference for weeks after week 5
 
@@ -31,9 +30,9 @@ mov_weight = 0.25
 wins_weight = 0.75
 
 # Comparison weightings
-hth_cmp_weight = 40
-co_base_cmp_weight = 20
-ffw_cmp_weight = 10
+hth_cmp_weight = 30
+co_base_cmp_weight = 10
+ffw_cmp_weight = 8
 aamco_21_cmp_weight = 7
 aamco_14_cmp_weight = 6
 aamco_7_cmp_weight = 5
@@ -80,7 +79,7 @@ def human_readable_cmps(weight):
 # Compares two teams, and returns True if t1 is better and False if t2 is
 #  better.  The second element of the tuple returned is a weight of how
 # important the distinction is
-def cmp_teams(t1, t2):
+def cmp_teams(teams, t1, t2):
 	# Head to head.  Assumes teams play each other no more than twice
 	t1_won = False
 	t2_won = False
@@ -102,20 +101,20 @@ def cmp_teams(t1, t2):
 	team2_opps = [game[1] for game in teams[t2]]
 	common_opps = [team for team in team1_opps if team in team2_opps]
 
-	team1_common_opp_wins, _, t1_homecount, _ = record_vs_opp_set(t1, common_opps)
-	team2_common_opp_wins, _, t2_homecount, _ = record_vs_opp_set(t2, common_opps)
+	team1_common_opp_wins, _, t1_homecount, _ = record_vs_opp_set(teams, t1, common_opps)
+	team2_common_opp_wins, _, t2_homecount, _ = record_vs_opp_set(teams, t2, common_opps)
 	if team1_common_opp_wins > team2_common_opp_wins:
-		return (True,co_base_cmp_weight+2*len(common_opps))
+		return (True, co_base_cmp_weight+2*len(common_opps))
 	elif team2_common_opp_wins > team1_common_opp_wins:
-		return (False,co_base_cmp_weight+2*len(common_opps))
+		return (False, co_base_cmp_weight+2*len(common_opps))
 	else:
 		# eliminating home/away tiebreak for now.  Maybe later it
 		# can be inserted as a lower priority decision
 		pass
 
 	# Some setup for the rest
-	(t1_wins,t1_losses,t1_h,t1_a) = record_vs_opp_set(t1,team1_opps)
-	(t2_wins,t2_losses,t2_h,t2_a) = record_vs_opp_set(t2,team2_opps)
+	(t1_wins, t1_losses, t1_h, t1_a) = record_vs_opp_set(teams, t1, team1_opps)
+	(t2_wins, t2_losses, t2_h, t2_a) = record_vs_opp_set(teams, t2, team2_opps)
 
 	# Short-circuit if one team has won four fewer games.  This is to get
 	# rid of FCS teams who only play an FBS team once or twice and win them all
@@ -125,8 +124,8 @@ def cmp_teams(t1, t2):
 		return (False, ffw_cmp_weight)
 
 	# AAMOV against common opponents
-	aamco1 = avg_adjusted_mov_oppset(t1, common_opps)
-	aamco2 = avg_adjusted_mov_oppset(t2, common_opps)
+	aamco1 = avg_adjusted_mov_oppset(teams, t1, common_opps)
+	aamco2 = avg_adjusted_mov_oppset(teams, t2, common_opps)
 
 	if abs(aamco1 - aamco2) >= 21:
 		return ((aamco1 > aamco2), aamco_21_cmp_weight)
@@ -137,8 +136,8 @@ def cmp_teams(t1, t2):
 	# If the aamcos are within 7, it's too close, lets move on to other factors
 
 	# Best wins weighted by aamov
-	wabw1 = weighted_average_best_wins(t1)
-	wabw2 = weighted_average_best_wins(t2)
+	wabw1 = weighted_average_best_wins(teams, t1)
+	wabw2 = weighted_average_best_wins(teams, t2)
 	aam1 = avg_adjusted_mov(t1)
 	aam2 = avg_adjusted_mov(t2)
 
@@ -155,10 +154,6 @@ def cmp_teams(t1, t2):
 		return (False, wwabw_cmp_weight)
 	else:
 		pass
-
-	# Who has the best wins?
-	wabw1 = weighted_average_best_wins(t1)
-	wabw2 = weighted_average_best_wins(t2)
 
 	if wabw1 > wabw2:
 		return (True,wabw_cmp_weight)
@@ -206,7 +201,7 @@ def cmp_teams(t1, t2):
 
 
 # For a set of opponents, what is a teams record against them
-def record_vs_opp_set(team,opps):
+def record_vs_opp_set(teams, team, opps):
 	wins = 0.0
 	losses = 0.0
 	home_count = 0.0
@@ -224,10 +219,24 @@ def record_vs_opp_set(team,opps):
 	return (wins,losses,home_count,away_count)
 
 
+def calculate_wabw_team_wins(teams, team, opps):
+	w,l,_,_ = record_vs_opp_set(teams,team,opps)
+	res = float(w)/(float(w)+float(l))
+	if current_week < 5:
+		# Adjust win counts by weighted average with previous year win counts
+		if team in prev_year_recs.keys():
+			res = res * (1.0 - mod_weight) + (prev_year_recs[team] * mod_weight)
+		else:
+			# If the opponent isn't in the prev_year_recs hash table,
+			# they didn't play any games last year
+			res = res * (1.0 - mod_weight)
+	return res
+
+
 # Calculates the weighted average of the number of wins of the three highest
 # win total win of a given team.  Uses the formula:
 # (3*best_win + 2*second_best_win + third_best_win)/6
-def weighted_average_best_wins(team):
+def weighted_average_best_wins(teams,team):
 	if "team_wins" not in weighted_average_best_wins.__dict__:
 		weighted_average_best_wins.team_wins = {}
 
@@ -241,15 +250,7 @@ def weighted_average_best_wins(team):
 	for game in teams[team]:
 		if game[0] == "W":
 			if not game[1] in weighted_average_best_wins.team_wins.keys():
-				w,l,_,_ = record_vs_opp_set(game[1],teams)
-				weighted_average_best_wins.team_wins[game[1]] = float(w)/(float(w)+float(l))
-				if current_week < 5:
-					if game[1] in prev_year_recs.keys():
-						weighted_average_best_wins.team_wins[game[1]] = weighted_average_best_wins.team_wins[game[1]] * (1.0 - mod_weight) \
-												+ prev_year_recs[game[1]] * mod_weight
-					else:
-						# If the opponent isn't in the prev_year_recs hash table, they didn't play any games last year
-						weighted_average_best_wins.team_wins[game[1]] = weighted_average_best_wins.team_wins[game[1]] * (1.0 - mod_weight)
+				weighted_average_best_wins.team_wins[game[1]] = calculate_wabw_team_wins(teams,game[1], teams)
 			opp_wins.append(weighted_average_best_wins.team_wins[game[1]])
 
 	opp_wins.sort(reverse=True)
@@ -285,7 +286,7 @@ def avg_adjusted_mov(team):
 	return total_margin / num_games
 
 
-def avg_adjusted_mov_oppset(team, opps):
+def avg_adjusted_mov_oppset(teams,team, opps):
 	num_games = 0.0
 	total_margin = 0.0
 	for game in teams[team]:
@@ -348,7 +349,7 @@ def order_teams(team_order):
 		else:
 			# Only overwrite if we changed something
 			initial_quality = new_quality
-			misses = 1 # We won't be retrying the previous ordering, so count that as a miss
+			misses = 1  # We won't be retrying the previous ordering, so count that as a miss
 			k += 1
 			switch_cache.clear()
 			# Don't retry the ordering we just did
@@ -383,108 +384,110 @@ def load_prev_year_records():
 		rownum += 1
 	return res
 
-random.seed()
+if __name__ == '__main__':
 
-f = open(infile, "r")
-reader = csv.reader(f)
+	random.seed()
 
-teams = {}
+	f = open(infile, "r")
+	reader = csv.reader(f)
 
-rownum = 0
-for row in reader:
-	if rownum == 0:
-		next
-	else:
-		if (row[tsh_col] == ' ' or row[tsh_col] == '' or row[tsv_col] == ' ' or row[tsv_col] == ''):
-			continue
-		visitorname = row[tnv_col]
-		homename = row[tnh_col]
-		visitorscore = int(row[tsv_col])
-		homescore = int(row[tsh_col])
+	teams = {}
 
-		if (visitorname not in teams.keys()):
-			teams[visitorname] = []
-		if (homename not in teams.keys()):
-			teams[homename] = []
-		
-		teams[visitorname].append(["W" if (visitorscore > homescore) else "L"
-					,homename,visitorscore,homescore,"A"])
-		teams[homename].append(["W" if (homescore > visitorscore) else "L"
-					,visitorname,homescore,visitorscore,"H"])
-		
-	rownum += 1
-
-if current_week < 5:
-	# prev_year_recs is a hash table where the keys are team names and the values are the number of wins they had last year
-	prev_year_recs = load_prev_year_records()
-
-# Compare all teams
-teamcmps = {}
-
-metric_counts = {}
-total_cmps = 0
-
-for team1 in teams.keys():
-	for team2 in teams.keys():
-		teamcmps[(team1,team2)] = cmp_teams(team1,team2)
-		teamcmps[(team2,team1)] = cmp_teams(team2,team1)
-		# Count up how frequently each metric is used to determine the comparison
-		weight = teamcmps[(team1,team2)][1]
-		# Collapse "Common opps" to one point
-		if (weight < hth_cmp_weight and weight >= co_base_cmp_weight):
-			weight = co_base_cmp_weight
-		if weight in metric_counts:
-			metric_counts[weight] += 1
+	rownum = 0
+	for row in reader:
+		if rownum == 0:
+			next
 		else:
-			metric_counts[weight] = 1
-		total_cmps += 1
+			if (row[tsh_col] == ' ' or row[tsh_col] == '' or row[tsv_col] == ' ' or row[tsv_col] == ''):
+				continue
+			visitorname = row[tnv_col]
+			homename = row[tnh_col]
+			visitorscore = int(row[tsv_col])
+			homescore = int(row[tsh_col])
 
-big_ten = ["Northwestern","Wisconsin", "Michigan", "Indiana", "Purdue", "Illinois", "Maryland", "Rutgers", "Ohio State", "Minnesota", "Nebraska", "Michigan State", "Penn State", "Iowa"]
-
-if len(sys.argv) == 1:
-	# Print out a ranking
-	team_order = order_teams(list(teams.keys()))
-
-	num = 0
-	for team in team_order:
-		num += 1
-		if num > 30 and team not in big_ten:
-			continue
-		wins,losses,_,_ = record_vs_opp_set(team, [game[1] for game in teams[team]])
-		print("%d. %s (%d-%d)"%(num,team, wins,losses))
-
-	# Print out the metrics used:
-	print("\nMetrics:")
-	for (metric, m_count) in metric_counts.items():
-		print("%s: %0.2f%%"%(human_readable_cmps(metric),100*float(m_count)/float(total_cmps)))
-
-elif len(sys.argv) == 2:
-	if sys.argv[1] == "once":
-		for (team, games) in teams.items():
-			if (len(games) == 1):
-				print(team)
-	else:
-		# Display info about the team
-		for game in teams[sys.argv[1]]:
-			w,l,_,_ = record_vs_opp_set(game[1],teams)
-			print("%s - %s: %d-%d"%(game[0],game[1],w,l))
-		print("AAMOV: %f"%avg_adjusted_mov(sys.argv[1]))
-		print("WABW: %f"%weighted_average_best_wins(sys.argv[1]))
-
-elif len(sys.argv) == 3:
-	# Print the relative ranking between the teams and its weight (which gives you the reason)
-	# If "all" is the second argument, display the first team vs all teams
-	if sys.argv[2] == "all":
-		for team in teams.keys():
-			(val,weight) = teamcmps[(sys.argv[1],team)]
-			print("%s - %s: %s"%(team,val,human_readable_cmps(weight)))
+			if (visitorname not in teams.keys()):
+				teams[visitorname] = []
+			if (homename not in teams.keys()):
+				teams[homename] = []
 			
+			teams[visitorname].append(["W" if (visitorscore > homescore) else "L"
+						,homename,visitorscore,homescore,"A"])
+			teams[homename].append(["W" if (homescore > visitorscore) else "L"
+						,visitorname,homescore,visitorscore,"H"])
+			
+		rownum += 1
+
+	if current_week < 5:
+		# prev_year_recs is a hash table where the keys are team names and the values are the number of wins they had last year
+		prev_year_recs = load_prev_year_records()
+
+	# Compare all teams
+	teamcmps = {}
+
+	metric_counts = {}
+	total_cmps = 0
+
+	for team1 in teams.keys():
+		for team2 in teams.keys():
+			teamcmps[(team1,team2)] = cmp_teams(teams, team1, team2)
+			teamcmps[(team2,team1)] = cmp_teams(teams, team2, team1)
+			# Count up how frequently each metric is used to determine the comparison
+			weight = teamcmps[(team1,team2)][1]
+			# Collapse "Common opps" to one point
+			if (weight < hth_cmp_weight and weight >= co_base_cmp_weight):
+				weight = co_base_cmp_weight
+			if weight in metric_counts:
+				metric_counts[weight] += 1
+			else:
+				metric_counts[weight] = 1
+			total_cmps += 1
+
+	big_ten = ["Northwestern","Wisconsin", "Michigan", "Indiana", "Purdue", "Illinois", "Maryland", "Rutgers", "Ohio State", "Minnesota", "Nebraska", "Michigan State", "Penn State", "Iowa"]
+
+	if len(sys.argv) == 1:
+		# Print out a ranking
+		team_order = order_teams(list(teams.keys()))
+
+		num = 0
+		for team in team_order:
+			num += 1
+			if num > 30 and team not in big_ten:
+				continue
+			wins,losses,_,_ = record_vs_opp_set(teams, team, [game[1] for game in teams[team]])
+			print("%d. %s (%d-%d)"%(num,team, wins,losses))
+
+		# Print out the metrics used:
+		print("\nMetrics:")
+		for (metric, m_count) in metric_counts.items():
+			print("%s: %0.2f%%"%(human_readable_cmps(metric),100*float(m_count)/float(total_cmps)))
+
+	elif len(sys.argv) == 2:
+		if sys.argv[1] == "once":
+			for (team, games) in teams.items():
+				if (len(games) == 1):
+					print(team)
+		else:
+			# Display info about the team
+			for game in teams[sys.argv[1]]:
+				w,l,_,_ = record_vs_opp_set(teams,game[1],teams)
+				print("%s - %s: %d-%d"%(game[0],game[1],w,l))
+			print("AAMOV: %f"%avg_adjusted_mov(sys.argv[1]))
+			print("WABW: %f"%weighted_average_best_wins(sys.argv[1]))
+
+	elif len(sys.argv) == 3:
+		# Print the relative ranking between the teams and its weight (which gives you the reason)
+		# If "all" is the second argument, display the first team vs all teams
+		if sys.argv[2] == "all":
+			for team in teams.keys():
+				(val,weight) = teamcmps[(sys.argv[1],team)]
+				print("%s - %s: %s"%(team,val,human_readable_cmps(weight)))
+				
+		else:
+			(val, weight) = teamcmps[(sys.argv[1],sys.argv[2])]
+			print((val,human_readable_cmps(weight)))
 	else:
-		(val, weight) = teamcmps[(sys.argv[1],sys.argv[2])]
-		print((val,human_readable_cmps(weight)))
-else:
-	# Print the quality of the given ordering
-	for team in sys.argv[1:]:
-		if team not in teams.keys():
-			print("%s not found"%team)
-	print(order_quality(sys.argv[1:]))
+		# Print the quality of the given ordering
+		for team in sys.argv[1:]:
+			if team not in teams.keys():
+				print("%s not found"%team)
+		print(order_quality(sys.argv[1:]))
