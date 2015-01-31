@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import unittest
+import constants
 
 from ranker import cmp_teams
 from ranker import record_vs_opp_set

@@ -15,62 +15,34 @@ import sys
 import csv
 import random
 import math
-
-prev_year_data_file = "cfb2013lines.csv"
-current_week = 5  # No difference for weeks after week 5
-
-infile = "cfb2014lines.csv"
-tnv_col = 1
-tnh_col = 3
-tsv_col = 2
-tsh_col = 4
-max_mov = 21
-max_iterations = 300000
-mov_weight = 0.25
-wins_weight = 0.75
-
-# Comparison weightings
-hth_cmp_weight = 30
-co_base_cmp_weight = 10
-ffw_cmp_weight = 8
-aamco_21_cmp_weight = 7
-aamco_14_cmp_weight = 6
-aamco_7_cmp_weight = 5
-wwabw_cmp_weight = 4
-wabw_cmp_weight = 3
-or_cmp_weight = 2
-or_tiebreaker_cmp_weight = 1.5
-aamov_cmp_weight = 1
-mw_cmp_weight = 0.5
-tie_cmp_weight = 0
-
+import constants
 
 def human_readable_cmps(weight):
-	if weight == hth_cmp_weight:
+	if weight == constants.hth_cmp_weight:
 		return "Head to head"
-	elif weight >= co_base_cmp_weight:
+	elif weight >= constants.co_base_cmp_weight:
 		return "Common Opponents record"
-	elif weight == ffw_cmp_weight:
+	elif weight == constants.ffw_cmp_weight:
 		return "Four fewer wins"
-	elif weight == aamco_21_cmp_weight:
+	elif weight == constants.aamco_21_cmp_weight:
 		return "AAMCO >= 21"
-	elif weight == aamco_14_cmp_weight:
+	elif weight == constants.aamco_14_cmp_weight:
 		return "AAMCO >= 14"
-	elif weight == aamco_7_cmp_weight:
+	elif weight == constants.aamco_7_cmp_weight:
 		return "AAMCO >= 7"
-	elif weight == wwabw_cmp_weight:
+	elif weight == constants.wwabw_cmp_weight:
 		return "WWABW"
-	elif weight == wabw_cmp_weight:
+	elif weight == constants.wabw_cmp_weight:
 		return "WABW"
-	elif weight == or_cmp_weight:
+	elif weight == constants.or_cmp_weight:
 		return "Overall record"
-	elif weight == or_tiebreaker_cmp_weight:
+	elif weight == constants.or_tiebreaker_cmp_weight:
 		return "Overall record h/a tiebreaker"
-	elif weight == aamov_cmp_weight:
+	elif weight == constants.aamov_cmp_weight:
 		return "AAMOV"
-	elif weight == mw_cmp_weight:
+	elif weight == constants.mw_cmp_weight:
 		return "More wins"
-	elif weight == tie_cmp_weight:
+	elif weight == constants.tie_cmp_weight:
 		return "tie"
 	else:
 		return "ERROR: Bad input"
@@ -90,9 +62,9 @@ def cmp_teams(teams, t1, t2):
 			else:
 				t2_won = True
 	if t1_won and not t2_won:
-		return (True, hth_cmp_weight)
+		return (True, constants.hth_cmp_weight)
 	elif t2_won and not t1_won:
-		return (False, hth_cmp_weight)
+		return (False, constants.hth_cmp_weight)
 	else:
 		pass
 
@@ -104,9 +76,9 @@ def cmp_teams(teams, t1, t2):
 	team1_common_opp_wins, _, t1_homecount, _ = record_vs_opp_set(teams, t1, common_opps)
 	team2_common_opp_wins, _, t2_homecount, _ = record_vs_opp_set(teams, t2, common_opps)
 	if team1_common_opp_wins > team2_common_opp_wins:
-		return (True, co_base_cmp_weight+2*len(common_opps))
+		return (True, constants.co_base_cmp_weight+2*len(common_opps))
 	elif team2_common_opp_wins > team1_common_opp_wins:
-		return (False, co_base_cmp_weight+2*len(common_opps))
+		return (False, constants.co_base_cmp_weight+2*len(common_opps))
 	else:
 		# eliminating home/away tiebreak for now.  Maybe later it
 		# can be inserted as a lower priority decision
@@ -119,20 +91,20 @@ def cmp_teams(teams, t1, t2):
 	# Short-circuit if one team has won four fewer games.  This is to get
 	# rid of FCS teams who only play an FBS team once or twice and win them all
 	if t1_wins > t2_wins + 3:
-		return (True, ffw_cmp_weight)
+		return (True, constants.ffw_cmp_weight)
 	elif t2_wins > t1_wins + 3:
-		return (False, ffw_cmp_weight)
+		return (False, constants.ffw_cmp_weight)
 
 	# AAMOV against common opponents
 	aamco1 = avg_adjusted_mov_oppset(teams, t1, common_opps)
 	aamco2 = avg_adjusted_mov_oppset(teams, t2, common_opps)
 
 	if abs(aamco1 - aamco2) >= 21:
-		return ((aamco1 > aamco2), aamco_21_cmp_weight)
+		return ((aamco1 > aamco2), constants.aamco_21_cmp_weight)
 	elif abs(aamco1 - aamco2) >= 14:
-		return ((aamco1 > aamco2), aamco_14_cmp_weight)
+		return ((aamco1 > aamco2), constants.aamco_14_cmp_weight)
 	elif abs(aamco1 - aamco2) >= 7:
-		return ((aamco1 > aamco2), aamco_7_cmp_weight)
+		return ((aamco1 > aamco2), constants.aamco_7_cmp_weight)
 	# If the aamcos are within 7, it's too close, lets move on to other factors
 
 	# Best wins weighted by aamov
@@ -145,20 +117,20 @@ def cmp_teams(teams, t1, t2):
 	naam1 = (aam1 + 21)/42
 	naam2 = (aam2 + 21)/42
 
-	wwabw1 = (wabw1 * naam1*mov_weight) + (wabw1 * wins_weight)
-	wwabw2 = (wabw2 * naam2*mov_weight) + (wabw2 * wins_weight)
+	wwabw1 = (wabw1 * naam1*constants.mov_weight) + (wabw1 * constants.wins_weight)
+	wwabw2 = (wabw2 * naam2*constants.mov_weight) + (wabw2 * constants.wins_weight)
 
 	if wwabw1 > wwabw2:
-		return (True, wwabw_cmp_weight)
+		return (True, constants.wwabw_cmp_weight)
 	elif wwabw2 > wwabw1:
-		return (False, wwabw_cmp_weight)
+		return (False, constants.wwabw_cmp_weight)
 	else:
 		pass
 
 	if wabw1 > wabw2:
-		return (True,wabw_cmp_weight)
+		return (True,constants.wabw_cmp_weight)
 	elif wabw2 > wabw1:
-		return (False,wabw_cmp_weight)
+		return (False,constants.wabw_cmp_weight)
 	else:
 		pass
 
@@ -166,15 +138,15 @@ def cmp_teams(teams, t1, t2):
 	t1_percent = t1_wins/(t1_wins+t1_losses)
 	t2_percent = t2_wins/(t2_wins+t2_losses)
 	if t1_percent > t2_percent:
-		return (True, or_cmp_weight)
+		return (True, constants.or_cmp_weight)
 	elif t2_percent > t1_percent:
-		return (False, or_cmp_weight)
+		return (False, constants.or_cmp_weight)
 	else:
 		# tiebreak on home vs away
 		if t1_a > t2_a:
-			return (True, or_tiebreaker_cmp_weight)
+			return (True, constants.or_tiebreaker_cmp_weight)
 		elif t2_a > t1_a:
-			return (False, or_tiebreaker_cmp_weight)
+			return (False, constants.or_tiebreaker_cmp_weight)
 		else:
 			pass
 
@@ -182,22 +154,22 @@ def cmp_teams(teams, t1, t2):
 	aam1 = avg_adjusted_mov(t1)
 	aam2 = avg_adjusted_mov(t2)
 	if aam1 > aam2:
-		return (True, aamov_cmp_weight)
+		return (True, constants.aamov_cmp_weight)
 	elif aam2 > aam1:
-		return (False, aamov_cmp_weight)
+		return (False, constants.aamov_cmp_weight)
 	else:
 		pass
 
 	# More wins are better
 	if t1_wins > t2_wins:
-		return (True, mw_cmp_weight)
+		return (True, constants.mw_cmp_weight)
 	elif t2_wins > t1_wins:
-		return (False, mw_cmp_weight)
+		return (False, constants.mw_cmp_weight)
 	else:
 		pass
 
 	# I give up, these teams are identical
-	return (None, tie_cmp_weight)
+	return (None, constants.tie_cmp_weight)
 
 
 # For a set of opponents, what is a teams record against them
@@ -219,10 +191,10 @@ def record_vs_opp_set(teams, team, opps):
 	return (wins,losses,home_count,away_count)
 
 
-def calculate_wabw_team_wins(teams, team, opps):
+def calculate_wabw_team_wins(teams, team, opps,mod_weight):
 	w,l,_,_ = record_vs_opp_set(teams,team,opps)
 	res = float(w)/(float(w)+float(l))
-	if current_week < 5:
+	if constants.current_week < 5:
 		# Adjust win counts by weighted average with previous year win counts
 		if team in prev_year_recs.keys():
 			res = res * (1.0 - mod_weight) + (prev_year_recs[team] * mod_weight)
@@ -242,15 +214,17 @@ def weighted_average_best_wins(teams,team):
 
 	opp_wins = []
 
-	if current_week < 5:
+	if constants.current_week < 5:
 		# Modify the wins by the win totals last year
 		# week 1 - 100%, week 2 - 75%, week 3 - 50%, week 4: 25%
-		mod_weight = (float(5-current_week))/4
+		mod_weight = (float(5-constants.current_week))/4
+	else:
+		mod_weight = 0
 
 	for game in teams[team]:
 		if game[0] == "W":
 			if not game[1] in weighted_average_best_wins.team_wins.keys():
-				weighted_average_best_wins.team_wins[game[1]] = calculate_wabw_team_wins(teams,game[1], teams)
+				weighted_average_best_wins.team_wins[game[1]] = calculate_wabw_team_wins(teams,game[1], teams, mod_weight)
 			opp_wins.append(weighted_average_best_wins.team_wins[game[1]])
 
 	opp_wins.sort(reverse=True)
@@ -276,11 +250,11 @@ def avg_adjusted_mov(team):
 	total_margin = 0.0
 	for game in teams[team]:
 		margin = game[2]-game[3]
-		if abs(margin) > max_mov:
+		if abs(margin) > constants.max_mov:
 			if margin > 0:
-				margin = max_mov
+				margin = constants.max_mov
 			else:
-				margin = -max_mov
+				margin = -constants.max_mov
 		num_games += 1
 		total_margin += margin
 	return total_margin / num_games
@@ -292,11 +266,11 @@ def avg_adjusted_mov_oppset(teams,team, opps):
 	for game in teams[team]:
 		if game[1] in opps:
 			margin = game[2]-game[3]
-			if abs(margin) > max_mov:
+			if abs(margin) > constants.max_mov:
 				if margin > 0:
-					margin = max_mov
+					margin = constants.max_mov
 				else:
-					margin = -max_mov
+					margin = -constants.max_mov
 			num_games += 1
 			total_margin += margin
 	if num_games > 0:
@@ -332,7 +306,7 @@ def order_teams(team_order):
 	k = 0
 	initial_quality = order_quality(team_order)
 	switch_cache = set()
-	while (k < max_iterations) and (misses < num_misses_to_continue):
+	while (k < constants.max_iterations) and (misses < num_misses_to_continue):
 		condition = True
 		while condition:
 			i = random.randint(0,num_teams-1)
@@ -361,7 +335,7 @@ def order_teams(team_order):
 
 # Loads a hash table with last years team names and win counts
 def load_prev_year_records():
-	f = open(prev_year_data_file, "rb")
+	f = open(constants.prev_year_data_file, "rb")
 	reader = csv.reader(f)
 	res = {}
 	rownum = 0
@@ -388,7 +362,7 @@ if __name__ == '__main__':
 
 	random.seed()
 
-	f = open(infile, "r")
+	f = open(constants.infile, "r")
 	reader = csv.reader(f)
 
 	teams = {}
@@ -398,12 +372,12 @@ if __name__ == '__main__':
 		if rownum == 0:
 			next
 		else:
-			if (row[tsh_col] == ' ' or row[tsh_col] == '' or row[tsv_col] == ' ' or row[tsv_col] == ''):
+			if (row[constants.tsh_col] == ' ' or row[constants.tsh_col] == '' or row[constants.tsv_col] == ' ' or row[constants.tsv_col] == ''):
 				continue
-			visitorname = row[tnv_col]
-			homename = row[tnh_col]
-			visitorscore = int(row[tsv_col])
-			homescore = int(row[tsh_col])
+			visitorname = row[constants.tnv_col]
+			homename = row[constants.tnh_col]
+			visitorscore = int(row[constants.tsv_col])
+			homescore = int(row[constants.tsh_col])
 
 			if (visitorname not in teams.keys()):
 				teams[visitorname] = []
@@ -417,7 +391,7 @@ if __name__ == '__main__':
 			
 		rownum += 1
 
-	if current_week < 5:
+	if constants.current_week < 5:
 		# prev_year_recs is a hash table where the keys are team names and the values are the number of wins they had last year
 		prev_year_recs = load_prev_year_records()
 
@@ -434,8 +408,8 @@ if __name__ == '__main__':
 			# Count up how frequently each metric is used to determine the comparison
 			weight = teamcmps[(team1,team2)][1]
 			# Collapse "Common opps" to one point
-			if (weight < hth_cmp_weight and weight >= co_base_cmp_weight):
-				weight = co_base_cmp_weight
+			if (weight < constants.hth_cmp_weight and weight >= constants.co_base_cmp_weight):
+				weight = constants.co_base_cmp_weight
 			if weight in metric_counts:
 				metric_counts[weight] += 1
 			else:
