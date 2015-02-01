@@ -16,8 +16,7 @@ wins_weight = 0.75
 # Comparison weightings
 hth_cmp_weight = 30
 co_base_cmp_weight = 10
-ffw_cmp_weight = 8
-aamco_21_cmp_weight = 7
+ffw_cmp_weight = 7
 aamco_14_cmp_weight = 6
 aamco_7_cmp_weight = 5
 wwabw_cmp_weight = 4
