@@ -1,0 +1,81 @@
+College Football Ranker
+Copyright (c) 2015 Daniel Burgener
+
+SUMMARY
+
+This program ranks all football teams that played any games involving FBS teams during a given football season.  It outputs a top 30, as well as any Big Ten teams not located in the top 30.  It additionally outputs several pieces of internal data about the ordering generated.  It is tested using Python 3.4.2 on 64 bit Arch Linux.
+
+The algorithm is as follows:
+
+- All teams are compared to all other teams.  This results in a verdict regarding which team should be ranked higher as well as a weighting where higher numbers are more significant as a differentiator between teams.  The order of comparison methods short circuits when a valid comparison is found.  So if two teams have played head to head (and one team has a better head to head record), then no other comparison methods will be tried. The weights are as follows:
+	- Head to Head result => 30
+	- Record against common opponents => 10 + 2 * (number of common opponents)
+	- If one team has at least four more wins => 7
+	- If the Average Adjusted Margin of Victory (see below) against common opponents varies by at least 14 => 6
+	- If the Average Adjusted Margin of Victory (see below) against common opponents varies by at least 7 => 5
+	- Whichever team has better Weighted Weighted Average of Best Wins (see below) => 4
+	- Whichever team has better Weighted Average of Best Wins (see below) => 3
+	- Whichever team has a better overall record => 2
+	- Whichever team has played more away games => 1.5
+	- Whichever team has a better Average Adjusted Margin of Victory (see below) in all games => 1
+	- Whichever team has more wins => 0.5
+
+If none of the above methods differentiate the teams, the teams are tied with a weight of 0.
+
+Once all teams are compared, the algorithm picks a random initial order and calculates a "quality" on that order where teams that are ranked above a team that they compare below according to the above steps, the order is penalized by the weight multiplied by the distance they are separated.  It then swaps two teams at random and recalculates the quality, keeping the new order only if the quality score is lowered (lower quality reflects a better ordering).  It continues doing this until no possible swaps yield an order with lower quality.
+
+Explanation of Metrics:
+
+Average Adjusted Margin of Victory:
+
+	Point differential (difference in total score) for each game, capped at 21 on either end, averaged across all games. The rationale for the cap is that a 3 TD lead is considered large enough that there is little difference above it, and the algorithm should not reward running up the score.
+
+Weighted Average Best Wins:
+
+	A weighted average of the number of wins of the three teams with the highest number of wins that a team has beaten.  The weightings are 3 to the highest win total, 2 to the next, and 1 to the lowest.  This is a strength of schedule metric that is designed to focus on the top opponents a team has beaten without worrying about distinctions in the bottom part of the schedule.  It uses number of wins rather than record.  This approximates record well, as most teams play roughly the same number of games, however it has a few nice properties that record does not.  First off, during the season teams may have played more or fewer games.  By counting number of wins, teams that have played more games and are therefore more proven are more highly valued.  Secondly, generally teams that play more than 12 games do so because of a conference championship game or a bowl game, which are desirable.  Choosing wins over record gives a boost to teams that beat such teams.  Finally, from the perspective of the algorithm, the only games from FCS teams that are included are those against FBS teams, so choosing win total, rather than record, necessarily devalues those victories, rather than treating an FCS team that is 1-1 against FBS teams the same as a 6-6 FBS team.
+
+Weighted Weighted Average Best Wins: 
+
+	This is the above Weighted Average Best Wins (WABW) and Average Adjusted Margin of Victory (AAMOV) stats combined in a weighted average according to the formula (0.75 * WABW) + (0.25 * AAMOV).  This is a metric showing how well a team performed against their strength of schedule.  It is worth noting that since AAMOV is calculated across all games, while WABW is calculated only across the top three, that this creates a bias in favor of teams who play three games against top opponents, and the rest of their games against less well regarded opponents.
+
+USAGE
+
+To run unit tests, run the script test_ranker.py
+
+To calculate a ranking, simply run the program with no arguments (./ranker.py).  Note that this may take up to an hour to complete, depending on your CPU speed.
+
+To display information about a particular team, use that team name as an argument (./ranker.py Northwestern).
+
+To display all teams that only occur once in the input file, use the word "once" as an argument (./ranker.py once).  This can be useful for detecting typos in the data.
+
+To display the comparison calculated between two teams, use both team names as arguments (./ranker.py Michigan "Ohio State").
+
+To display the comparison calculated between a team and all other teams, use the first team name, and then the word "all" (./ranker.py Northwestern all).
+
+KNOWN ISSUES
+
+- The ranking takes a long time to calculate.
+
+- The current final 2014 ranking has Oregon ranked ahead of OSU, despite OSU's victory in the championship game.  Some parameters may require tweaking to produce a better order.
+
+- The "WWABW" stat produces a bias in favor of teams that largely play a weak schedule, with a few top games.
+
+- It is a result of the algorithm that teams are generally penalized more for out of conference losses than in conference losses. (This is likely part of the reason Oregon is ahead of Ohio State).
+
+- The interface is not very user friendly.
+
+- The ordering is potentially subject to being stuck in a local minimum.
+
+FUTURE WORK
+
+- Increase unit test coverage
+
+- Rewrite evolutionary algorithm code to perform faster, avoid local minimums, and be more easily parrellelizable perhaps by using the simulated annealing technique
+
+- Multithreading
+
+- Add "expanded record" metric, and experiment with how to best order vs or combine with WWABW
+
+- Automatically track previous orderings, and display delta vs last week when a new ordering is generated
+
+- Improve interface
