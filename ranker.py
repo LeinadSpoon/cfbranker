@@ -455,8 +455,8 @@ if __name__ == '__main__':
 			for game in teams[sys.argv[1]]:
 				w, l, _, _ = record_vs_opp_set(teams, game[1], teams)
 				print("%s - %s: %d-%d" % (game[0], game[1], w, l))
-			print("AAMOV: %f" % avg_adjusted_mov(sys.argv[1]))
-			print("WABW: %f" % weighted_average_best_wins(sys.argv[1]))
+			print("AAMOV: %f" % avg_adjusted_mov(teams, sys.argv[1]))
+			print("WABW: %f" % weighted_average_best_wins(teams, prev_year_recs, sys.argv[1]))
 
 	elif len(sys.argv) == 3:
 		# Print the relative ranking between the teams and its weight (which gives you the reason)
