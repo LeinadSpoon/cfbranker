@@ -34,6 +34,8 @@ Weighted Average Best Wins:
 
 	A weighted average of the number of wins of the three teams with the highest number of wins that a team has beaten.  The weightings are 3 to the highest win total, 2 to the next, and 1 to the lowest.  This is a strength of schedule metric that is designed to focus on the top opponents a team has beaten without worrying about distinctions in the bottom part of the schedule.  It uses number of wins rather than record.  This approximates record well, as most teams play roughly the same number of games, however it has a few nice properties that record does not.  First off, during the season teams may have played more or fewer games.  By counting number of wins, teams that have played more games and are therefore more proven are more highly valued.  Secondly, generally teams that play more than 12 games do so because of a conference championship game or a bowl game, which are desirable.  Choosing wins over record gives a boost to teams that beat such teams.  Finally, from the perspective of the algorithm, the only games from FCS teams that are included are those against FBS teams, so choosing win total, rather than record, necessarily devalues those victories, rather than treating an FCS team that is 1-1 against FBS teams the same as a 6-6 FBS team.
 
+During the first 4 weeks of the season, previous year win totals are weighted in with current year win totals at a rate of 100% in week one, 75% in week two, 50% in week three, and 25% in week four.  This is to hel p evaluate strength of schedule early in the season.
+
 Weighted Weighted Average Best Wins: 
 
 	This is the above Weighted Average Best Wins (WABW) and Average Adjusted Margin of Victory (AAMOV) stats combined in a weighted average according to the formula (0.75 * WABW) + (0.25 * AAMOV).  This is a metric showing how well a team performed against their strength of schedule.  It is worth noting that since AAMOV is calculated across all games, while WABW is calculated only across the top three, that this creates a bias in favor of teams who play three games against top opponents, and the rest of their games against less well regarded opponents.
@@ -79,3 +81,5 @@ FUTURE WORK
 - Automatically track previous orderings, and display delta vs last week when a new ordering is generated
 
 - Improve interface
+
+- Find new data source and modify parser for new data
