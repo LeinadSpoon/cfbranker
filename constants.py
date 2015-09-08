@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-prev_year_data_file = "cfb2013lines.csv"
-current_week = 5  # No difference for weeks after week 5
+prev_year_data_file = "cfb2014lines_updated.csv"
+current_week = 1  # No difference for weeks after week 5
 
-infile = "cfb2014lines.csv"
+infile = "cfb2015results.csv"
 tnv_col = 1
 tnh_col = 3
 tsv_col = 2
