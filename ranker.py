@@ -339,7 +339,7 @@ def order_teams(team_order, teamcmps):
 
 # Loads a hash table with last years team names and win counts
 def load_prev_year_records():
-	f = open(constants.prev_year_data_file, "rb")
+	f = open(constants.prev_year_data_file, "r")
 	reader = csv.reader(f)
 	res = {}
 	rownum = 0
@@ -347,19 +347,19 @@ def load_prev_year_records():
 		if rownum == 0:
 			next
 		else:
-			if (row[tsh_col] == ' ' or row[tsh_col] == ''
-			    or row[tsv_col] == ' ' or row[tsv_col] == ''):
+			if (row[constants.tsh_col] == ' ' or row[constants.tsh_col] == ''
+			    or row[constants.tsv_col] == ' ' or row[constants.tsv_col] == ''):
 				continue
-			if (int(row[tsv_col]) > int(row[tsh_col])):
+			if (int(row[constants.tsv_col]) > int(row[constants.tsh_col])):
 				# Visitor won
-				if (not row[tnv_col] in res.keys()):
-					res[row[tnv_col]] = 0
-				res[row[tnv_col]] += 1
+				if (not row[constants.tnv_col] in res.keys()):
+					res[row[constants.tnv_col]] = 0
+				res[row[constants.tnv_col]] += 1
 			else:
 				# Home won
-				if (not row[tnh_col] in res.keys()):
-					res[row[tnh_col]] = 0
-				res[row[tnh_col]] += 1
+				if (not row[constants.tnh_col] in res.keys()):
+					res[row[constants.tnh_col]] = 0
+				res[row[constants.tnh_col]] += 1
 		rownum += 1
 	return res
 
