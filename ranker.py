@@ -238,9 +238,9 @@ def weighted_average_best_wins(teams, prev_year_recs, team):
 			tot_wins += weight*i
 			weight -= 1
 		if len(opp_wins) == 2:
-			return tot_wins/5
+			return (tot_wins - 3)/5 # Penalty for having won fewer games
 		else:
-			return tot_wins/3
+			return (tot_wins - 5)/3 # Penalty for having won fewer games
 
 
 # Calculates the average margin of victory over all games, but setting all
