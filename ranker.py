@@ -217,7 +217,9 @@ def weighted_average_best_wins(teams, prev_year_recs, team):
 	else:
 		mod_weight = 0
 
+	games_played = 0
 	for game in teams[team]:
+		games_played += 1
 		if game[0] == "W":
 			if not game[1] in weighted_average_best_wins.team_wins.keys():
 				weighted_average_best_wins.team_wins[game[1]] = calculate_wabw_team_wins(
@@ -237,10 +239,12 @@ def weighted_average_best_wins(teams, prev_year_recs, team):
 		for i in opp_wins:
 			tot_wins += weight*i
 			weight -= 1
-		if len(opp_wins) == 2:
-			return (tot_wins - 3)/5 # Penalty for having won fewer games
+		if games_played >= 3:
+			return tot_wins/6
+		elif games_played == 2:
+			return tot_wins/5
 		else:
-			return (tot_wins - 5)/3 # Penalty for having won fewer games
+			return tot_wins/3
 
 
 # Calculates the average margin of victory over all games, but setting all
