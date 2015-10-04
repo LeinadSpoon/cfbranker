@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 prev_year_data_file = "cfb2014lines_updated.csv"
-current_week = 4  # No difference for weeks after week 5
+current_week = 5  # No difference for weeks after week 5
 
 infile = "cfb2015results.csv"
 tnv_col = 1
