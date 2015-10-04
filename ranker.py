@@ -454,6 +454,15 @@ if __name__ == '__main__':
 			for (team, games) in teams.items():
 				if (len(games) == 1):
 					print(team)
+		elif sys.argv[1] == "csv":
+			# Output full results in csv format
+			team_order = order_teams(list(teams.keys()), teamcmps)
+
+			print("Team, Rank");
+			num = 0
+			for team in team_order:
+				num += 1
+				print("%s,%d" % (team, num))
 		else:
 			# Display info about the team
 			for game in teams[sys.argv[1]]:
